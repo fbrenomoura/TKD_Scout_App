@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TKD Scout App</title>
+    
+    <!-- Tailwind CSS para estilização rápida e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Biblioteca jsPDF para gerar o PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Plugin para tabelas no jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Biblioteca Chart.js para criar os gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Biblioteca SortableJS para arrastar e soltar os itens da lista -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+    <style>
+        /* Estilos personalizados para complementar o Tailwind */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent; /* Remove o destaque azul ao tocar em links/botões no mobile */
+        }
+        
+        /* Estilização da barra de rolagem para um visual mais limpo */
+        .action-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .action-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .action-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 2px;
+        }
+        .action-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Animação para o modal deslizar de baixo para cima */
+        #action-modal {
+            transition: transform 0.3s ease-in-out;
+            transform: translateY(100%);
+        }
+        #action-modal.active {
+            transform: translateY(0);
+        }
+
+        /* Efeito de "pressionado" nos botões de ação */
+        .action-button:active {
+            transform: scale(0.95);
+            filter: brightness(0.9);
+        }
+        
+        /* Estilo para os itens arrastáveis */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #c8ebfb;
+        }
+
+        /* Estilo para o botão de alternância de atleta */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 80px;
+            height: 40px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ef5350; /* Cor do Atleta 1 (Vermelho) */
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 32px;
+            width: 32px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #42a5f5; /* Cor do Atleta 2 (Azul) */
+        }
+        input:checked + .slider:before {
+            transform: translateX(40px);
+        }
+        
+        /* Garante que os canvas dos gráficos nunca sejam exibidos na tela */
+        .chart-canvas {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex justify-center items-center min-h-screen">
+
+    <!-- Container principal do aplicativo -->
+    <div class="w-full max-w-md mx-auto bg-white shadow-lg rounded-lg flex flex-col h-screen">
+
+        <!-- Área dos Atletas -->
+        <main class="flex-grow p-4 flex flex-col gap-4 overflow-hidden">
+            <div class="grid grid-cols-2 gap-4 flex-grow overflow-hidden">
+                <!-- Coluna Atleta 1 (Vermelho) -->
+                <div id="atleta1-container" class="flex flex-col border-2 border-red-400 rounded-lg transition-all duration-300 overflow-hidden">
+                    <div class="p-2 text-center bg-red-100 rounded-t-lg">
+                        <input type="text" id="atleta1-name" value="Atleta 1" class="w-full text-center bg-transparent font-bold text-red-800">
+                    </div>
+                    <div id="atleta1-list" class="action-list flex-grow p-2 space-y-2 overflow-y-auto bg-red-50"></div>
+                    <div id="atleta1-score" class="p-2 text-center bg-red-400 text-white font-bold rounded-b-lg text-2xl">00</div>
+                </div>
+                <!-- Coluna Atleta 2 (Azul) -->
+                <div id="atleta2-container" class="flex flex-col border-2 border-gray-300 rounded-lg transition-all duration-300 overflow-hidden">
+                    <div class="p-2 text-center bg-gray-100 rounded-t-lg">
+                        <input type="text" id="atleta2-name" value="Atleta 2" class="w-full text-center bg-transparent font-bold text-gray-800">
+                    </div>
+                    <div id="atleta2-list" class="action-list flex-grow p-2 space-y-2 overflow-y-auto bg-gray-50"></div>
+                    <div id="atleta2-score" class="p-2 text-center bg-blue-400 text-white font-bold rounded-b-lg text-2xl">00</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Cronômetro e Controles -->
+        <section class="p-4">
+            <div class="bg-gray-100 p-3 rounded-lg shadow-inner">
+                <div class="flex justify-between items-center px-4 mb-2">
+                    <h2 class="text-xl font-bold text-gray-700">Round <span id="round-display">1</span></h2>
+                    <div id="timer" class="text-4xl font-mono font-bold text-gray-800">00:00</div>
+                </div>
+                <div class="flex justify-around items-center mt-2 text-gray-600">
+                    <button id="reset-btn" class="p-2 rounded-full hover:bg-red-100 hover:text-red-500" title="Reiniciar Luta">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                    <button id="play-pause-btn" class="p-2 rounded-full hover:bg-gray-200" title="Play/Pause">
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    </button>
+                    <button id="next-round-btn" class="p-2 rounded-full hover:bg-green-200 text-green-600" title="Próximo Round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                    <button id="end-fight-btn" class="p-2 rounded-full hover:bg-red-200 text-red-500" title="Finalizar Luta">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><line x1="10" y1="10" x2="14" y2="14"></line><line x1="14" y1="10" x2="10" y2="14"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Botões de Ação -->
+        <footer class="p-4 grid grid-cols-3 gap-4 items-center">
+            <!-- Ações Esquerda -->
+            <div class="flex flex-col gap-4 items-center">
+                <button data-action="chute" data-side="esquerdo" class="action-button bg-white p-4 rounded-full shadow-md">
+                    <img src="resources/chuteEsquerdoVermelho.png" alt="Chute Esquerdo" class="w-8 h-8">
+                </button>
+                <button data-action="soco" data-side="esquerdo" class="action-button bg-white p-4 rounded-full shadow-md">
+                    <img src="resources/socoEsquerdoVermelho.png" alt="Soco Esquerdo" class="w-8 h-8">
+                </button>
+            </div>
+            <!-- Alternância e Ações Centrais -->
+            <div class="flex flex-col gap-4 items-center">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="athlete-toggle">
+                    <span class="slider"></span>
+                </label>
+                <button data-action="clinch" class="action-button bg-white p-3 rounded-full shadow-md">
+                    <img src="resources/clinch.png" alt="Clinch" class="w-8 h-8"> <!-- Ícone não encontrado na imagem, mantido o original -->
+                </button>
+                 <button data-action="falta" class="action-button bg-white p-3 rounded-full shadow-md">
+                    <img id="falta-icon" src="resources/faltaVermelho.png" alt="Falta" class="w-8 h-8">
+                </button>
+            </div>
+            <!-- Ações Direita -->
+            <div class="flex flex-col gap-4 items-center">
+                <button data-action="chute" data-side="direito" class="action-button bg-white p-4 rounded-full shadow-md">
+                     <img src="resources/chuteDireitoVermelho.png" alt="Chute Direito" class="w-8 h-8">
+                </button>
+                <button data-action="soco" data-side="direito" class="action-button bg-white p-4 rounded-full shadow-md">
+                    <img src="resources/socoDireitoVermelho.png" alt="Soco Direito" class="w-8 h-8">
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal de Detalhes da Ação -->
+    <div id="action-modal" class="fixed bottom-0 left-0 right-0 bg-gray-50 shadow-2xl rounded-t-2xl p-4 z-50 max-w-md mx-auto">
+        <h3 id="modal-title" class="text-xl font-bold text-center mb-4">Detalhes da Ação</h3>
+        <div class="space-y-4">
+            <div id="kick-options" class="hidden">
+                <div class="mb-2">
+                    <label class="font-semibold text-gray-700">Saída</label>
+                    <div id="saida-group" class="flex gap-2 mt-1">
+                        <button data-value="frente" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Frente</button>
+                        <button data-value="tras" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Trás</button>
+                        <button data-value="giro" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Giro</button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="font-semibold text-gray-700">Contato</label>
+                    <div id="contato-group" class="flex gap-2 mt-1">
+                        <button data-value="colete" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Colete</button>
+                        <button data-value="capacete" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Capacete</button>
+                    </div>
+                </div>
+            </div>
+            <div id="generic-options" class="hidden">
+                 <div class="mb-2">
+                    <label class="font-semibold text-gray-700">Situação</label>
+                    <div id="situacao-group" class="flex gap-2 mt-1">
+                        <button data-value="ataque" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Ataque</button>
+                        <button data-value="defesa" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Contra-Ataque</button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="font-semibold text-gray-700">Área</label>
+                    <div id="area-group" class="flex gap-2 mt-1">
+                        <button data-value="meio" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Meio</button>
+                        <button data-value="canto ofensivo" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Canto Ofens.</button>
+                        <button data-value="canto defensivo" class="flex-1 bg-white p-2 rounded-lg shadow-sm">Canto Defen.</button>
+                    </div>
+                </div>
+            </div>
+             <div id="foul-options" class="hidden">
+                <div class="mb-2">
+                    <label class="font-semibold text-gray-700">Tipo de Falta (Gam-jeom)</label>
+                    <div id="falta-group" class="grid grid-cols-2 gap-2 mt-1">
+                        <button data-value="Saída da Área" class="bg-white p-2 rounded-lg shadow-sm">Saída da Área</button>
+                        <button data-value="Evitar Combate" class="bg-white p-2 rounded-lg shadow-sm">Evitar Combate</button>
+                        <button data-value="Segurar/Empurrar" class="bg-white p-2 rounded-lg shadow-sm">Segurar/Empurrar</button>
+                        <button data-value="Ataque Ilegal" class="bg-white p-2 rounded-lg shadow-sm">Ataque Ilegal</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-4 mt-6">
+            <button id="cancel-action-btn" class="flex-1 bg-gray-300 text-gray-800 p-3 rounded-lg font-bold">Cancelar</button>
+            <button id="confirm-action-btn" class="flex-1 bg-green-500 text-white p-3 rounded-lg font-bold">Confirmar</button>
+        </div>
+    </div>
+    
+    <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+    
+    <!-- Modal de Confirmação/Alerta Genérico -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+            <h3 id="confirm-modal-title" class="text-lg font-bold mb-2 text-gray-800"></h3>
+            <p id="confirm-modal-text" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-modal-cancel" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300">Cancelar</button>
+                <button id="confirm-modal-ok" class="bg-red-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-600">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <canvas id="barChartCanvas" width="400" height="200" class="chart-canvas"></canvas>
+    <canvas id="spiderChartCanvas" width="400" height="400" class="chart-canvas"></canvas>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- ELEMENTOS DO DOM ---
+            const athleteToggle = document.getElementById('athlete-toggle');
+            const timerDisplay = document.getElementById('timer');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const playIcon = document.getElementById('play-icon');
+            const pauseIcon = document.getElementById('pause-icon');
+            const resetBtn = document.getElementById('reset-btn');
+            const nextRoundBtn = document.getElementById('next-round-btn');
+            const endFightBtn = document.getElementById('end-fight-btn');
+            const actionButtons = document.querySelectorAll('.action-button');
+            const actionModal = document.getElementById('action-modal');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const cancelBtn = document.getElementById('cancel-action-btn');
+            const confirmBtn = document.getElementById('confirm-action-btn');
+            const modalTitle = document.getElementById('modal-title');
+            const kickOptions = document.getElementById('kick-options');
+            const genericOptions = document.getElementById('generic-options');
+            const foulOptions = document.getElementById('foul-options');
+            const roundDisplay = document.getElementById('round-display');
+            const atleta1List = document.getElementById('atleta1-list');
+            const atleta2List = document.getElementById('atleta2-list');
+            const atleta1ScoreEl = document.getElementById('atleta1-score');
+            const atleta2ScoreEl = document.getElementById('atleta2-score');
+            const faltaIcon = document.getElementById('falta-icon');
+            
+            // Elementos do Modal de Confirmação
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmModalTitle = document.getElementById('confirm-modal-title');
+            const confirmModalText = document.getElementById('confirm-modal-text');
+            const confirmModalCancel = document.getElementById('confirm-modal-cancel');
+            const confirmModalOk = document.getElementById('confirm-modal-ok');
+
+
+            // --- ESTADO DA APLICAÇÃO ---
+            let activeAthlete = 'atleta1';
+            let fightActions = [];
+            let timerInterval = null;
+            let seconds = 0;
+            let currentRound = 1;
+            let currentAction = {};
+            let editingActionId = null;
+            let pressTimer = null;
+            let barChart = null;
+            let spiderChart = null;
+            let confirmCallback = null;
+
+            // --- FUNÇÕES DO MODAL DE CONFIRMAÇÃO ---
+            const showConfirm = (title, text, onConfirm, showCancel = true) => {
+                confirmModalTitle.textContent = title;
+                confirmModalText.textContent = text;
+                confirmCallback = onConfirm;
+                
+                confirmModalCancel.style.display = showCancel ? 'inline-block' : 'none';
+                confirmModalOk.textContent = showCancel ? 'Confirmar' : 'OK';
+                
+                if (!showCancel) {
+                    confirmModalOk.classList.remove('bg-red-500', 'hover:bg-red-600');
+                    confirmModalOk.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                } else {
+                    confirmModalOk.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                    confirmModalOk.classList.add('bg-red-500', 'hover:bg-red-600');
+                }
+
+                confirmModal.classList.remove('hidden');
+                confirmModal.classList.add('flex');
+            };
+
+            const hideConfirm = () => {
+                confirmModal.classList.add('hidden');
+                confirmModal.classList.remove('flex');
+                confirmCallback = null;
+            };
+
+            confirmModalOk.addEventListener('click', () => {
+                if (confirmCallback) {
+                    confirmCallback();
+                }
+                hideConfirm();
+            });
+
+            confirmModalCancel.addEventListener('click', hideConfirm);
+
+
+            // --- FUNÇÕES DO CRONÔMETRO E ROUNDS ---
+            const formatTime = (totalSeconds) => {
+                const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+                const secondsValue = (totalSeconds % 60).toString().padStart(2, '0');
+                return `${minutes}:${secondsValue}`;
+            };
+
+            const updateTimerDisplay = () => {
+                timerDisplay.textContent = formatTime(seconds);
+            };
+
+            const stopTimer = () => {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            };
+
+            const startTimer = () => {
+                if (timerInterval) return;
+                timerInterval = setInterval(() => {
+                    seconds++;
+                    updateTimerDisplay();
+                }, 1000);
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+            };
+
+            const toggleTimer = () => {
+                if (timerInterval) stopTimer(); else startTimer();
+            };
+            
+            const resetRoundTimer = () => {
+                stopTimer();
+                seconds = 0;
+                updateTimerDisplay();
+            };
+
+            const resetFight = () => {
+                showConfirm(
+                    "Reiniciar Luta?",
+                    "Tem certeza que deseja reiniciar a luta? Todos os dados serão perdidos.",
+                    () => {
+                        resetRoundTimer();
+                        currentRound = 1;
+                        roundDisplay.textContent = currentRound;
+                        fightActions = [];
+                        renderActions();
+                    }
+                );
+            };
+            
+            const nextRound = () => {
+                showConfirm(
+                    `Finalizar Round ${currentRound}?`,
+                    `Deseja ir para o Round ${currentRound + 1}?`,
+                    () => {
+                        stopTimer();
+                        currentRound++;
+                        roundDisplay.textContent = currentRound;
+                        resetRoundTimer();
+                        renderActions();
+                    }
+                );
+            };
+
+            // --- FUNÇÕES DE UI E LÓGICA ---
+            const updateActiveAthleteUI = () => {
+                const isAtleta1Active = activeAthlete === 'atleta1';
+                document.getElementById('atleta1-container').classList.toggle('border-red-400', isAtleta1Active);
+                document.getElementById('atleta1-container').classList.toggle('shadow-lg', isAtleta1Active);
+                document.getElementById('atleta2-container').classList.toggle('border-blue-400', !isAtleta1Active);
+                document.getElementById('atleta2-container').classList.toggle('shadow-lg', !isAtleta1Active);
+                // Atualiza o ícone de falta com os novos nomes
+                faltaIcon.src = isAtleta1Active ? 'resources/faltaVermelho.png' : 'resources/faltaAzul.png';
+            };
+
+            const openModal = (action, side, actionToEdit = null) => {
+                editingActionId = actionToEdit ? actionToEdit.id : null;
+                currentAction = actionToEdit ? JSON.parse(JSON.stringify(actionToEdit)) : { action, side, details: {} };
+                
+                let title = '';
+                kickOptions.classList.add('hidden');
+                genericOptions.classList.add('hidden');
+                foulOptions.classList.add('hidden');
+
+                if (action === 'chute') {
+                    title = `Chute ${side === 'esquerdo' ? 'Esquerdo' : 'Direito'}`;
+                    kickOptions.classList.remove('hidden');
+                    genericOptions.classList.remove('hidden');
+                } else if (action === 'soco') {
+                    title = `Soco ${side === 'esquerdo' ? 'Esquerdo' : 'Direito'}`;
+                    genericOptions.classList.remove('hidden');
+                } else if (action === 'clinch') {
+                    title = 'Clinch';
+                    genericOptions.classList.remove('hidden');
+                } else if (action === 'falta') {
+                    title = 'Registrar Falta';
+                    foulOptions.classList.remove('hidden');
+                }
+                modalTitle.textContent = title;
+                
+                document.querySelectorAll('#action-modal button[data-value]').forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
+
+                if(actionToEdit) {
+                    for(const key in actionToEdit.details) {
+                        const btn = document.querySelector(`#${key}-group button[data-value="${actionToEdit.details[key]}"]`);
+                        if(btn) btn.classList.add('bg-blue-500', 'text-white');
+                    }
+                }
+
+                actionModal.classList.add('active');
+                modalOverlay.classList.remove('hidden');
+            };
+
+            const closeModal = () => {
+                actionModal.classList.remove('active');
+                modalOverlay.classList.add('hidden');
+                editingActionId = null;
+            };
+
+            const renderActions = () => {
+                atleta1List.innerHTML = '';
+                atleta2List.innerHTML = '';
+                
+                const currentRoundActions = fightActions.filter(a => a.round === currentRound);
+                let roundScore1 = 0;
+                let roundScore2 = 0;
+
+                currentRoundActions.forEach(action => {
+                    const list = action.athlete === 'atleta1' ? atleta1List : atleta2List;
+                    const bgColor = action.athlete === 'atleta1' ? 'bg-red-100' : 'bg-blue-100';
+                    const textColor = action.athlete === 'atleta1' ? 'text-red-800' : 'text-blue-800';
+                    
+                    let points = 0;
+                    if (action.type === 'chute') {
+                        if (action.details.contato === 'colete') points = 2;
+                        if (action.details.contato === 'capacete') points = 3;
+                        if (action.details.saida === 'giro' && points > 0) points += 2;
+                    } else if (action.type === 'soco' && action.details.situacao === 'ataque') {
+                        points = 1;
+                    } else if (action.type === 'falta') {
+                        if (action.athlete === 'atleta1') roundScore2 += 1; else roundScore1 += 1;
+                    }
+                    if (action.athlete === 'atleta1') roundScore1 += points; else roundScore2 += points;
+
+                    let actionText = '';
+                    if (action.type === 'chute') {
+                        actionText = `Chute ${action.details.contato || ''} (${action.details.situacao || ''})`;
+                    } else if (action.type === 'soco') {
+                        actionText = `Soco (${action.details.situacao || ''})`;
+                    } else if (action.type === 'clinch') {
+                        actionText = `Clinch (${action.details.situacao || ''})`;
+                    } else if (action.type === 'falta') {
+                        actionText = `Falta: ${action.details.falta}`;
+                    }
+                    
+                    const item = document.createElement('div');
+                    item.dataset.id = action.id;
+                    item.className = `${bgColor} ${textColor} p-2 rounded-lg text-sm flex justify-between items-center cursor-move`;
+                    item.innerHTML = `
+                        <span>${actionText}</span>
+                        <button data-id="${action.id}" class="delete-action-btn text-gray-500 hover:text-red-500">&times;</button>
+                    `;
+
+                    const startPress = (e) => {
+                        e.preventDefault();
+                        pressTimer = setTimeout(() => {
+                            const actionToEdit = fightActions.find(a => a.id == action.id);
+                            if(actionToEdit) openModal(actionToEdit.type, actionToEdit.side, actionToEdit);
+                        }, 500);
+                    };
+                    const cancelPress = () => clearTimeout(pressTimer);
+                    
+                    item.addEventListener('mousedown', startPress);
+                    item.addEventListener('touchstart', startPress);
+                    item.addEventListener('mouseup', cancelPress);
+                    item.addEventListener('mouseleave', cancelPress);
+                    item.addEventListener('touchend', cancelPress);
+
+                    list.appendChild(item);
+                });
+
+                atleta1ScoreEl.textContent = roundScore1.toString().padStart(2, '0');
+                atleta2ScoreEl.textContent = roundScore2.toString().padStart(2, '0');
+                
+                document.querySelectorAll('.delete-action-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const idToDelete = e.currentTarget.dataset.id;
+                        fightActions = fightActions.filter(act => act.id != idToDelete);
+                        renderActions();
+                    });
+                });
+            };
+            
+            // --- FUNÇÕES DE GERAÇÃO DE ARQUIVOS ---
+            const generateJSON = () => {
+                const data = {
+                    atleta1: { name: document.getElementById('atleta1-name').value, score: atleta1ScoreEl.textContent },
+                    atleta2: { name: document.getElementById('atleta2-name').value, score: atleta2ScoreEl.textContent },
+                    totalRounds: currentRound,
+                    actions: fightActions
+                };
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `luta_${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            const calculateAllFightStats = () => {
+                const getInitialStats = () => ({
+                    pontos: 0,
+                    faltas: 0,
+                    areaPontua: { 'Meio': 0, 'Canto Ofensivo': 0, 'Canto Defensivo': 0 },
+                    situacaoPontua: { 'Ataque': 0, 'Contra-Ataque': 0, 'Clinch': 0 },
+                    tempoPontua: { '0:00-0:30': 0, '0:30-1:00': 0, '1:00-1:30': 0, '1:30-2:00': 0 }
+                });
+
+                let stats1 = getInitialStats();
+                let stats2 = getInitialStats();
+
+                fightActions.forEach(act => {
+                    let points = 0;
+                    let isFoul = false;
+                     if (act.type === 'falta') {
+                        points = 1;
+                        isFoul = true;
+                    } else if (act.type === 'chute') {
+                        if (act.details.contato === 'colete') points = 2;
+                        if (act.details.contato === 'capacete') points = 3;
+                        if (act.details.saida === 'giro' && points > 0) points += 2;
+                    } else if (act.type === 'soco' && act.details.situacao === 'ataque') {
+                        points = 1;
+                    }
+                    
+                    if (points > 0) {
+                        const [min, sec] = act.timestamp.split(':').map(Number);
+                        const timeInSeconds = min * 60 + sec;
+                        let timeInterval;
+                        if (timeInSeconds < 30) timeInterval = '0:00-0:30';
+                        else if (timeInSeconds < 60) timeInterval = '0:30-1:00';
+                        else if (timeInSeconds < 90) timeInterval = '1:00-1:30';
+                        else timeInterval = '1:30-2:00';
+                        
+                        const scoringAthleteStats = isFoul ? (act.athlete === 'atleta1' ? stats2 : stats1) : (act.athlete === 'atleta1' ? stats1 : stats2);
+                        if(isFoul) {
+                            if(act.athlete === 'atleta1') stats1.faltas++; else stats2.faltas++;
+                        }
+                        
+                        scoringAthleteStats.pontos += points;
+                        
+                        if (act.details.area) {
+                            scoringAthleteStats.areaPontua[act.details.area.replace('meio','Meio').replace('canto ofensivo','Canto Ofensivo').replace('canto defensivo','Canto Defensivo')] += points;
+                        }
+                        if (act.type === 'clinch') {
+                            scoringAthleteStats.situacaoPontua.Clinch += points;
+                        } else if (act.details.situacao) {
+                             scoringAthleteStats.situacaoPontua[act.details.situacao.replace('ataque','Ataque').replace('defesa','Contra-Ataque')] += points;
+                        }
+                        if (timeInterval) {
+                           scoringAthleteStats.tempoPontua[timeInterval] += points;
+                        }
+                    }
+                });
+
+                const formatStatsToPercent = (stats) => {
+                    const totalPoints = stats.pontos;
+                    const newStats = JSON.parse(JSON.stringify(stats));
+                    if (totalPoints === 0) return newStats;
+
+                    for (const key in newStats.areaPontua) {
+                        newStats.areaPontua[key] = parseFloat((newStats.areaPontua[key] / totalPoints * 100).toFixed(2));
+                    }
+                    for (const key in newStats.situacaoPontua) {
+                        newStats.situacaoPontua[key] = parseFloat((newStats.situacaoPontua[key] / totalPoints * 100).toFixed(2));
+                    }
+                     for (const key in newStats.tempoPontua) {
+                        newStats.tempoPontua[key] = parseFloat((newStats.tempoPontua[key] / totalPoints * 100).toFixed(2));
+                    }
+                    return newStats;
+                };
+
+                return {
+                    stats1: formatStatsToPercent(stats1),
+                    stats2: formatStatsToPercent(stats2)
+                };
+            };
+            
+            const drawBarChart = (doc, canvas, data, labels, startY) => {
+                const ctx = canvas.getContext('2d');
+                if (barChart) barChart.destroy();
+                barChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Pontuação (%)',
+                            data: data,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        scales: { 
+                            x: { 
+                                beginAtZero: true, 
+                                max: 100,
+                                ticks: { font: { size: 14 } } 
+                            },
+                            y: {
+                                ticks: { font: { size: 14 } } 
+                            }
+                        },
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                titleFont: { size: 14 }, 
+                                bodyFont: { size: 12 } 
+                            }
+                        },
+                        animation: { duration: 0 }
+                    }
+                });
+                const chartImage = canvas.toDataURL('image/png');
+                doc.addImage(chartImage, 'PNG', 15, startY, 180, 80);
+                return doc.lastAutoTable.finalY + 95;
+            };
+
+            const generatePDF = () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                const athlete1Name = document.getElementById('atleta1-name').value;
+                const athlete2Name = document.getElementById('atleta2-name').value;
+                const { stats1, stats2 } = calculateAllFightStats();
+                const barCanvas = document.getElementById('barChartCanvas');
+                const spiderCanvas = document.getElementById('spiderChartCanvas');
+                
+                const pageHeight = doc.internal.pageSize.height;
+                const margin = 20;
+                let finalY = 0;
+
+                const checkPageBreak = (neededHeight) => {
+                    if (finalY + neededHeight > pageHeight - margin) {
+                        doc.addPage();
+                        finalY = margin;
+                    }
+                };
+
+                // --- CABEÇALHO ---
+                doc.setFontSize(18);
+                doc.text(`Relatório de Luta: ${athlete1Name} vs ${athlete2Name}`, 14, 22);
+                doc.setFontSize(11);
+                doc.setTextColor(100);
+                doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')} | Rounds: ${currentRound}`, 14, 30);
+                doc.setFontSize(14);
+                doc.text(`Placar Final: ${stats1.pontos} x ${stats2.pontos}`, 14, 38);
+                finalY = 45;
+
+                // --- SÚMULA DA LUTA ---
+                doc.setFontSize(16);
+                doc.text('Súmula da Luta', 14, finalY);
+                const sumulaBody = fightActions.map(act => {
+                    let actionDesc = '';
+                    if (act.type === 'chute') actionDesc = `Chute ${act.details.contato || ''}`;
+                    else if (act.type === 'soco') actionDesc = 'Soco';
+                    else if (act.type === 'clinch') actionDesc = 'Clinch';
+                    else if (act.type === 'falta') actionDesc = `Falta (${act.details.falta})`;
+                    
+                    const details = act.details.situacao ? act.details.situacao.replace('defesa', 'Contra-Ataque') : '';
+                    const athleteName = act.athlete === 'atleta1' ? athlete1Name : athlete2Name;
+                    return [act.round, act.timestamp, athleteName, actionDesc, details];
+                });
+                doc.autoTable({
+                    head: [['Round', 'Tempo', 'Atleta', 'Ação', 'Detalhes']],
+                    body: sumulaBody,
+                    startY: finalY + 5,
+                    theme: 'striped'
+                });
+                finalY = doc.lastAutoTable.finalY;
+
+                // --- PARÂMETROS DA LUTA ---
+                finalY += 15;
+                checkPageBreak(20);
+                doc.setFontSize(16);
+                doc.text('Parâmetros da Luta', 14, finalY);
+                finalY += 10;
+
+                const athletes = [
+                    { name: athlete1Name, stats: stats1, opponentStats: stats2 },
+                    { name: athlete2Name, stats: stats2, opponentStats: stats1 }
+                ];
+
+                athletes.forEach(athlete => {
+                    // Área
+                    checkPageBreak(130);
+                    doc.setFontSize(12);
+                    doc.text(`Análise de Área - ${athlete.name}`, 14, finalY);
+                    doc.autoTable({
+                        head: [['Área da Quadra que Pontua (%)', 'Área da Quadra que Sofre Pontos (%)']],
+                        body: Object.keys(athlete.stats.areaPontua).map(key => [`${key}: ${athlete.stats.areaPontua[key]}%`, `${key}: ${athlete.opponentStats.areaPontua[key]}%`]),
+                        startY: finalY + 5, theme: 'grid', headStyles: { fillColor: [41, 128, 185] }
+                    });
+                    finalY = drawBarChart(doc, barCanvas, Object.values(athlete.stats.areaPontua), Object.keys(athlete.stats.areaPontua), doc.lastAutoTable.finalY + 5);
+
+                    // Situação
+                    checkPageBreak(130);
+                    doc.setFontSize(12);
+                    doc.text(`Análise de Situação - ${athlete.name}`, 14, finalY);
+                    doc.autoTable({
+                        head: [['Situação que Pontua (%)', 'Situação que o Adversário Pontua (%)']],
+                        body: Object.keys(athlete.stats.situacaoPontua).map(key => [`${key}: ${athlete.stats.situacaoPontua[key]}%`, `${key}: ${athlete.opponentStats.situacaoPontua[key]}%`]),
+                        startY: finalY + 5, theme: 'grid', headStyles: { fillColor: [22, 160, 133] }
+                    });
+                    finalY = drawBarChart(doc, barCanvas, Object.values(athlete.stats.situacaoPontua), Object.keys(athlete.stats.situacaoPontua), doc.lastAutoTable.finalY + 5);
+                    
+                    // Tempo
+                    checkPageBreak(130);
+                    doc.setFontSize(12);
+                    doc.text(`Análise de Tempo - ${athlete.name}`, 14, finalY);
+                    doc.autoTable({
+                        head: [['Tempo que Pontua (%)', 'Tempo que o Adversário Pontua (%)']],
+                        body: Object.keys(athlete.stats.tempoPontua).map(key => [`${key}: ${athlete.stats.tempoPontua[key]}%`, `${key}: ${athlete.opponentStats.tempoPontua[key]}%`]),
+                        startY: finalY + 5, theme: 'grid', headStyles: { fillColor: [243, 156, 18] }
+                    });
+                    finalY = drawBarChart(doc, barCanvas, Object.values(athlete.stats.tempoPontua), Object.keys(athlete.stats.tempoPontua), doc.lastAutoTable.finalY + 5);
+                });
+
+                // Spider Graph Page
+                checkPageBreak(200);
+                doc.setFontSize(16);
+                doc.text('Visão Geral de Performance', 14, finalY);
+                const spiderCtx = spiderCanvas.getContext('2d');
+                if (spiderChart) spiderChart.destroy();
+                spiderChart = new Chart(spiderCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Ataque', 'Contra-Ataque', 'Clinch', 'Chutes', 'Socos', 'Faltas'],
+                        datasets: [{
+                            label: athlete1Name,
+                            data: [
+                                fightActions.filter(a => a.athlete === 'atleta1' && a.details.situacao === 'ataque').length,
+                                fightActions.filter(a => a.athlete === 'atleta1' && a.details.situacao === 'defesa').length,
+                                fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'clinch').length,
+                                fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'chute').length,
+                                fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'soco').length,
+                                stats1.faltas
+                            ],
+                            backgroundColor: 'rgba(239, 83, 80, 0.2)',
+                            borderColor: 'rgba(239, 83, 80, 1)',
+                            borderWidth: 2
+                        }, {
+                            label: athlete2Name,
+                            data: [
+                                fightActions.filter(a => a.athlete === 'atleta2' && a.details.situacao === 'ataque').length,
+                                fightActions.filter(a => a.athlete === 'atleta2' && a.details.situacao === 'defesa').length,
+                                fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'clinch').length,
+                                fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'chute').length,
+                                fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'soco').length,
+                                stats2.faltas
+                            ],
+                            backgroundColor: 'rgba(66, 165, 245, 0.2)',
+                            borderColor: 'rgba(66, 165, 245, 1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: { 
+                        animation: { duration: 0 }, 
+                        scales: { 
+                            r: { 
+                                beginAtZero: true, 
+                                ticks: { stepSize: 1, font: { size: 12 } },
+                                pointLabels: { font: { size: 14 } }
+                            } 
+                        },
+                        plugins: {
+                            legend: { labels: { font: { size: 14 } } }
+                        }
+                    }
+                });
+                const spiderImage = spiderCanvas.toDataURL('image/png');
+                doc.addImage(spiderImage, 'PNG', 15, finalY + 10, 180, 180);
+
+                doc.save(`relatorio_luta_${Date.now()}.pdf`);
+            };
+
+
+            // --- EVENT LISTENERS ---
+            athleteToggle.addEventListener('change', (e) => {
+                activeAthlete = e.target.checked ? 'atleta2' : 'atleta1';
+                updateActiveAthleteUI();
+            });
+
+            playPauseBtn.addEventListener('click', toggleTimer);
+            resetBtn.addEventListener('click', resetFight);
+            nextRoundBtn.addEventListener('click', nextRound);
+
+            endFightBtn.addEventListener('click', () => {
+                if (fightActions.length === 0) {
+                    showConfirm("Nenhuma Ação", "Nenhuma ação foi registrada. Adicione ações antes de finalizar a luta.", () => {}, false);
+                    return;
+                }
+                showConfirm(
+                    "Finalizar Luta?",
+                    "Deseja realmente finalizar a luta? Os relatórios serão gerados.",
+                    () => {
+                        stopTimer();
+                        setTimeout(generatePDF, 100); // Pequeno delay para garantir a renderização
+                        generateJSON();
+                    }
+                );
+            });
+
+            actionButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const action = btn.dataset.action;
+                    const side = btn.dataset.side;
+                    openModal(action, side);
+                });
+            });
+
+            cancelBtn.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', closeModal);
+
+            confirmBtn.addEventListener('click', () => {
+                if (editingActionId) {
+                    const actionIndex = fightActions.findIndex(a => a.id === editingActionId);
+                    if (actionIndex > -1) {
+                        fightActions[actionIndex].details = currentAction.details;
+                    }
+                } else {
+                    const newAction = {
+                        id: Date.now(),
+                        athlete: activeAthlete,
+                        type: currentAction.action,
+                        side: currentAction.side,
+                        timestamp: formatTime(seconds),
+                        round: currentRound,
+                        details: currentAction.details
+                    };
+                    fightActions.push(newAction);
+                }
+                renderActions();
+                closeModal();
+            });
+
+            document.querySelectorAll('#action-modal button[data-value]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const group = btn.parentElement;
+                    const property = group.id.replace('-group', '');
+                    const value = btn.dataset.value;
+                    
+                    if (btn.classList.contains('bg-blue-500')) {
+                        btn.classList.remove('bg-blue-500', 'text-white');
+                        delete currentAction.details[property];
+                    } else {
+                        group.querySelectorAll('button').forEach(b => b.classList.remove('bg-blue-500', 'text-white'));
+                        btn.classList.add('bg-blue-500', 'text-white');
+                        currentAction.details[property] = value;
+                    }
+                });
+            });
+
+            // --- INICIALIZAÇÃO ---
+            updateActiveAthleteUI();
+            updateTimerDisplay();
+
+            const sortableOptions = {
+                group: 'shared',
+                animation: 150,
+                onEnd: (evt) => {
+                    const movedItemId = evt.item.dataset.id;
+                    const oldIndex = fightActions.findIndex(a => a.id == movedItemId);
+                    if (evt.to !== evt.from) {
+                        fightActions[oldIndex].athlete = evt.to.id.includes('atleta1') ? 'atleta1' : 'atleta2';
+                    }
+                    renderActions();
+                }
+            };
+            new Sortable(atleta1List, sortableOptions);
+            new Sortable(atleta2List, sortableOptions);
+        });
+    </script>
+</body>
+</html>

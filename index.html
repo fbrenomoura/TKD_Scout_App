@@ -43,11 +43,11 @@
         }
 
         /* Animação para o modal deslizar de baixo para cima */
-        #action-modal {
+        .modal-slide {
             transition: transform 0.3s ease-in-out;
             transform: translateY(100%);
         }
-        #action-modal.active {
+        .modal-slide.active {
             transform: translateY(0);
         }
 
@@ -61,6 +61,9 @@
         .sortable-ghost {
             opacity: 0.4;
             background: #c8ebfb;
+        }
+        .sortable-delay-200 {
+            touch-action: none; /* Melhora a experiência de arrastar no mobile */
         }
 
         /* Estilo para o botão de alternância de atleta */
@@ -112,6 +115,10 @@
         #help-modal-header {
             cursor: move;
         }
+        
+        #timer {
+            cursor: pointer; /* Adiciona o cursor de ponteiro para indicar que é clicável */
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex justify-center items-center min-h-screen">
@@ -146,7 +153,7 @@
             <div class="bg-gray-100 p-3 rounded-lg shadow-inner">
                 <div class="flex justify-between items-center px-4 mb-2">
                     <h2 class="text-xl font-bold text-gray-700">Round <span id="round-display">1</span></h2>
-                    <div id="timer" class="text-4xl font-mono font-bold text-gray-800">00:00</div>
+                    <div id="timer" class="text-4xl font-mono font-bold text-gray-800" title="Clique para alterar o tempo">02:00</div>
                 </div>
                 <div class="flex justify-around items-center mt-2 text-gray-600">
                     <button id="help-btn" class="p-2 rounded-full hover:bg-blue-100 hover:text-blue-500" title="Ajuda">
@@ -191,7 +198,7 @@
                     <span class="slider"></span>
                 </label>
                 <button data-action="clinch" class="action-button bg-white p-2 rounded-full shadow-md flex justify-center items-center">
-                    <img src="resources/clinch.png" alt="Clinch" class="w-16 h-16">
+                    <img id="clinch-icon" src="resources/clinchVermelho.png" alt="Clinch" class="w-16 h-16">
                 </button>
                  <button data-action="falta" class="action-button bg-white p-2 rounded-full shadow-md flex justify-center items-center">
                     <img id="falta-icon" src="resources/faltaVermelho.png" alt="Falta" class="w-16 h-16">
@@ -210,7 +217,7 @@
     </div>
 
     <!-- Modal de Detalhes da Ação -->
-    <div id="action-modal" class="fixed bottom-0 left-0 right-0 bg-gray-50 shadow-2xl rounded-t-2xl p-4 z-50 max-w-md mx-auto">
+    <div id="action-modal" class="modal-slide fixed bottom-0 left-0 right-0 bg-gray-50 shadow-2xl rounded-t-2xl p-4 z-50 max-w-md mx-auto">
         <h3 id="modal-title" class="text-xl font-bold text-center mb-4">Detalhes da Ação</h3>
         <div class="space-y-4">
              <div id="time-editor" class="hidden mb-2">
@@ -269,6 +276,21 @@
         </div>
     </div>
     
+    <!-- Modal de Edição de Tempo -->
+    <div id="time-edit-modal" class="modal-slide fixed bottom-0 left-0 right-0 bg-gray-50 shadow-2xl rounded-t-2xl p-4 z-50 max-w-md mx-auto">
+        <h3 class="text-xl font-bold text-center mb-4">Editar Tempo do Round</h3>
+        <div class="space-y-4">
+            <div>
+                <label for="time-input" class="font-semibold text-gray-700">Tempo (mm:ss)</label>
+                <input type="text" id="time-input" class="w-full border border-gray-300 rounded-md p-2 mt-1 text-center font-mono text-2xl" placeholder="02:00">
+            </div>
+        </div>
+        <div class="flex gap-4 mt-6">
+            <button id="cancel-time-btn" class="flex-1 bg-gray-300 text-gray-800 p-3 rounded-lg font-bold">Cancelar</button>
+            <button id="confirm-time-btn" class="flex-1 bg-blue-500 text-white p-3 rounded-lg font-bold">Confirmar</button>
+        </div>
+    </div>
+
     <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
     
     <!-- Modal de Confirmação/Alerta Genérico -->
@@ -312,9 +334,10 @@
         </div>
         <div class="text-sm text-gray-700 space-y-3 max-h-80 overflow-y-auto">
             <p><strong>Controles da Luta:</strong> Use os botões na parte inferior para iniciar/pausar o cronômetro, ir para o próximo round, reiniciar ou finalizar a luta.</p>
-            <p><strong>Registro de Ações:</strong> Selecione o atleta ativo usando o seletor (Vermelho/Azul). Toque nos botões de ação (chute, soco, etc.) para abrir o menu de detalhes e registrar uma ação.</p>
-            <p><strong>Editar/Remover Ação:</strong> Pressione e segure uma ação na lista para abrir o menu de edição. Lá você pode alterar os detalhes, o tempo da ação ou removê-la.</p>
-            <p><strong>Reordenar Ações:</strong> Arraste e solte uma ação na lista para reordená-la. O tempo da ação será ajustado automaticamente para se encaixar na nova posição.</p>
+            <p><strong>Cronômetro:</strong> O tempo é regressivo. Clique no tempo (ex: 02:00) para abrir o menu e definir uma nova duração para o round a qualquer momento.</p>
+            <p><strong>Registro de Ações:</strong> Selecione o atleta ativo usando o seletor (Vermelho/Azul). Toque nos botões de ação (chute, soco, etc.) para registrar uma ação.</p>
+            <p><strong>Editar/Remover Ação:</strong> Clique em uma ação na lista para abrir o menu de edição. Lá você pode alterar os detalhes, o tempo da ação ou removê-la.</p>
+            <p><strong>Reordenar Ações:</strong> Clique e arraste uma ação na lista para reordená-la. O tempo da ação será ajustado automaticamente para se encaixar na nova posição.</p>
             <p><strong>Tela Cheia:</strong> Use o botão de tela cheia para uma experiência imersiva. Em dispositivos iOS, você precisará primeiro "Adicionar à Tela de Início" pelo menu de compartilhamento do Safari.</p>
             <p><strong>Finalizar Luta:</strong> Ao finalizar, você terá opções para gerar um relatório em PDF, um arquivo JSON com os dados brutos, adicionar comentários e compartilhar a análise com uma IA para obter estratégias.</p>
             <hr class="my-4">
@@ -353,21 +376,31 @@
             const helpModal = document.getElementById('help-modal');
             const helpModalClose = document.getElementById('help-modal-close');
             const actionButtons = document.querySelectorAll('.action-button');
-            const actionModal = document.getElementById('action-modal');
             const modalOverlay = document.getElementById('modal-overlay');
+            
+            // Modal de Ação
+            const actionModal = document.getElementById('action-modal');
             const confirmBtn = document.getElementById('confirm-action-btn');
             const removeActionBtn = document.getElementById('remove-action-btn');
             const modalTitle = document.getElementById('modal-title');
             const kickOptions = document.getElementById('kick-options');
             const genericOptions = document.getElementById('generic-options');
             const foulOptions = document.getElementById('foul-options');
+            const timeEditor = document.getElementById('time-editor');
+            const modalActionTime = document.getElementById('modal-action-time');
+            
+            // Modal de Edição de Tempo
+            const timeEditModal = document.getElementById('time-edit-modal');
+            const timeInput = document.getElementById('time-input');
+            const confirmTimeBtn = document.getElementById('confirm-time-btn');
+            const cancelTimeBtn = document.getElementById('cancel-time-btn');
+
+            // Listas e Placar
             const roundDisplay = document.getElementById('round-display');
             const atleta1List = document.getElementById('atleta1-list');
             const atleta2List = document.getElementById('atleta2-list');
             const atleta1ScoreEl = document.getElementById('atleta1-score');
             const atleta2ScoreEl = document.getElementById('atleta2-score');
-            const timeEditor = document.getElementById('time-editor');
-            const modalActionTime = document.getElementById('modal-action-time');
             
             // Ícones de Ação
             const chuteEsquerdoIcon = document.getElementById('chute-esquerdo-icon');
@@ -375,15 +408,16 @@
             const chuteDireitoIcon = document.getElementById('chute-direito-icon');
             const socoDireitoIcon = document.getElementById('soco-direito-icon');
             const faltaIcon = document.getElementById('falta-icon');
+            const clinchIcon = document.getElementById('clinch-icon');
             
-            // Elementos do Modal de Confirmação
+            // Modal de Confirmação Genérico
             const confirmModal = document.getElementById('confirm-modal');
             const confirmModalTitle = document.getElementById('confirm-modal-title');
             const confirmModalText = document.getElementById('confirm-modal-text');
             const confirmModalCancel = document.getElementById('confirm-modal-cancel');
             const confirmModalOk = document.getElementById('confirm-modal-ok');
 
-            // Elementos do Modal de Finalizar Luta
+            // Opções do Modal de Finalizar Luta
             const endFightOptions = document.getElementById('end-fight-options');
             const pdfCheckbox = document.getElementById('pdf-checkbox');
             const jsonCheckbox = document.getElementById('json-checkbox');
@@ -397,14 +431,15 @@
             let activeAthlete = 'atleta1';
             let fightActions = [];
             let timerInterval = null;
-            let seconds = 0;
+            let roundDuration = 120; // Duração padrão de 2 minutos (120s)
+            let seconds = roundDuration; // Inicia com a duração total
             let currentRound = 1;
             let currentAction = {};
             let editingActionId = null;
-            let pressTimer = null;
             let barChart = null;
             let spiderChart = null;
             let confirmCallback = null;
+            let modalContextAthlete = 'atleta1'; // Guarda o contexto do atleta para o modal de ação
 
             // --- FUNÇÕES DO MODAL DE CONFIRMAÇÃO ---
             const showConfirm = (title, text, onConfirm, showCancel = true, isEndFight = false) => {
@@ -417,7 +452,7 @@
 
                 if (isEndFight) {
                     endFightOptions.classList.remove('hidden');
-                    confirmModalText.classList.add('hidden'); // Oculta o texto genérico
+                    confirmModalText.classList.add('hidden');
                 } else {
                     endFightOptions.classList.add('hidden');
                     confirmModalText.classList.remove('hidden');
@@ -439,7 +474,6 @@
                 confirmModal.classList.add('hidden');
                 confirmModal.classList.remove('flex');
                 confirmCallback = null;
-                // Reseta as opções do modal de finalizar luta para o padrão
                 pdfCheckbox.checked = true;
                 jsonCheckbox.checked = false;
                 commentCheckbox.checked = false;
@@ -449,10 +483,7 @@
             };
 
             confirmModalOk.addEventListener('click', () => {
-                if (confirmCallback) {
-                    confirmCallback();
-                }
-                // Não esconde o modal aqui, a função de callback o fará se necessário
+                if (confirmCallback) confirmCallback();
             });
 
             confirmModalCancel.addEventListener('click', hideConfirm);
@@ -461,9 +492,10 @@
             // --- FUNÇÕES DO CRONÔMETRO E ROUNDS ---
             const timeToSeconds = (timeStr) => {
                 const parts = timeStr.split(':');
-                if (parts.length !== 2) return 0;
-                const minutes = parseInt(parts[0], 10) || 0;
-                const seconds = parseInt(parts[1], 10) || 0;
+                if (parts.length !== 2) return NaN;
+                const minutes = parseInt(parts[0], 10);
+                const seconds = parseInt(parts[1], 10);
+                if (isNaN(minutes) || isNaN(seconds)) return NaN;
                 return (minutes * 60) + seconds;
             };
 
@@ -485,10 +517,14 @@
             };
 
             const startTimer = () => {
-                if (timerInterval) return;
+                if (timerInterval || seconds <= 0) return;
                 timerInterval = setInterval(() => {
-                    seconds++;
-                    updateTimerDisplay();
+                    if (seconds > 0) {
+                        seconds--;
+                        updateTimerDisplay();
+                    } else {
+                        stopTimer();
+                    }
                 }, 1000);
                 playIcon.classList.add('hidden');
                 pauseIcon.classList.remove('hidden');
@@ -500,7 +536,7 @@
             
             const resetRoundTimer = () => {
                 stopTimer();
-                seconds = 0;
+                seconds = roundDuration;
                 updateTimerDisplay();
             };
 
@@ -509,10 +545,11 @@
                     "Reiniciar Luta?",
                     "Tem certeza que deseja reiniciar a luta? Todos os dados serão perdidos.",
                     () => {
-                        resetRoundTimer();
                         currentRound = 1;
                         roundDisplay.textContent = currentRound;
                         fightActions = [];
+                        roundDuration = 120;
+                        resetRoundTimer();
                         renderActions();
                         hideConfirm();
                     }
@@ -534,6 +571,22 @@
                 );
             };
 
+            // --- FUNÇÕES DOS MODAIS ---
+            const openTimeEditModal = () => {
+                stopTimer();
+                timeInput.value = formatTime(seconds);
+                timeEditModal.classList.add('active');
+                modalOverlay.classList.remove('hidden');
+            };
+
+            const closeAllModals = () => {
+                actionModal.classList.remove('active');
+                timeEditModal.classList.remove('active');
+                helpModal.classList.add('hidden');
+                modalOverlay.classList.add('hidden');
+                editingActionId = null;
+            };
+
             // --- FUNÇÕES DE UI E LÓGICA ---
             const updateActiveAthleteUI = () => {
                 const isAtleta1Active = activeAthlete === 'atleta1';
@@ -542,19 +595,20 @@
                 document.getElementById('atleta2-container').classList.toggle('border-blue-400', !isAtleta1Active);
                 document.getElementById('atleta2-container').classList.toggle('shadow-lg', !isAtleta1Active);
                 
-                // Altera a cor dos ícones com base no atleta ativo
                 const color = isAtleta1Active ? 'Vermelho' : 'Azul';
                 chuteEsquerdoIcon.src = `resources/chuteEsquerdo${color}.png`;
                 socoEsquerdoIcon.src = `resources/socoEsquerdo${color}.png`;
                 chuteDireitoIcon.src = `resources/chuteDireito${color}.png`;
                 socoDireitoIcon.src = `resources/socoDireito${color}.png`;
                 faltaIcon.src = `resources/falta${color}.png`;
+                clinchIcon.src = `resources/clinch${color}.png`;
             };
 
-            const openModal = (action, side, actionToEdit = null) => {
+            const openActionModal = (action, side, actionToEdit = null) => {
                 editingActionId = actionToEdit ? actionToEdit.id : null;
                 currentAction = actionToEdit ? JSON.parse(JSON.stringify(actionToEdit)) : { action, side, details: {} };
-                
+                modalContextAthlete = actionToEdit ? actionToEdit.athlete : activeAthlete;
+
                 let title = '';
                 kickOptions.classList.add('hidden');
                 genericOptions.classList.add('hidden');
@@ -576,15 +630,23 @@
                 }
                 modalTitle.textContent = title;
                 
-                document.querySelectorAll('#action-modal button[data-value]').forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
+                document.querySelectorAll('#action-modal button[data-value]').forEach(btn => {
+                    btn.classList.remove('bg-red-500', 'bg-blue-500', 'text-white');
+                    btn.classList.add('bg-white');
+                });
 
                 if(actionToEdit) {
                     removeActionBtn.classList.remove('hidden');
                     timeEditor.classList.remove('hidden');
                     modalActionTime.value = actionToEdit.timestamp;
+                    
+                    const activeColor = modalContextAthlete === 'atleta1' ? 'bg-red-500' : 'bg-blue-500';
                     for(const key in actionToEdit.details) {
                         const btn = document.querySelector(`#${key}-group button[data-value="${actionToEdit.details[key]}"]`);
-                        if(btn) btn.classList.add('bg-blue-500', 'text-white');
+                        if(btn) {
+                            btn.classList.remove('bg-white');
+                            btn.classList.add(activeColor, 'text-white');
+                        }
                     }
                 } else {
                     removeActionBtn.classList.add('hidden');
@@ -595,12 +657,6 @@
                 modalOverlay.classList.remove('hidden');
             };
 
-            const closeModal = () => {
-                actionModal.classList.remove('active');
-                modalOverlay.classList.add('hidden');
-                editingActionId = null;
-            };
-
             const renderActions = () => {
                 atleta1List.innerHTML = '';
                 atleta2List.innerHTML = '';
@@ -608,6 +664,29 @@
                 const currentRoundActions = fightActions.filter(a => a.round === currentRound);
                 let roundScore1 = 0;
                 let roundScore2 = 0;
+
+                let totalScore1 = 0;
+                let totalScore2 = 0;
+                fightActions.forEach(action => {
+                    if (action.round < currentRound) {
+                        let points = 0;
+                        if (action.type === 'chute') {
+                            if (action.details.contato === 'colete') points = 2;
+                            if (action.details.contato === 'capacete') points = 3;
+                            if (action.details.saida === 'giro' && points > 0) points += 2;
+                        } else if (action.type === 'soco') { 
+                            points = 1;
+                        } else if (action.type === 'falta') {
+                            if (action.athlete === 'atleta1') totalScore2 += 1; else totalScore1 += 1;
+                        }
+                        if (action.athlete === 'atleta1') totalScore1 += points; else totalScore2 += points;
+                    }
+                });
+
+                roundScore1 = totalScore1;
+                roundScore2 = totalScore2;
+
+                currentRoundActions.sort((a, b) => timeToSeconds(b.timestamp) - timeToSeconds(a.timestamp));
 
                 currentRoundActions.forEach(action => {
                     const list = action.athlete === 'atleta1' ? atleta1List : atleta2List;
@@ -639,42 +718,15 @@
                     
                     const item = document.createElement('div');
                     item.dataset.id = action.id;
-                    item.className = `${bgColor} ${textColor} p-2 rounded-lg text-sm flex justify-between items-center cursor-move`;
+                    item.className = `${bgColor} ${textColor} p-2 rounded-lg text-sm flex justify-between items-center cursor-pointer`;
                     item.innerHTML = `<span>${action.timestamp} - ${actionText}</span>`;
 
-                    let pressTimer = null;
-                    let hasMoved = false;
-
-                    const handlePressStart = (e) => {
-                        hasMoved = false;
-                        pressTimer = setTimeout(() => {
-                            if (!hasMoved) { // Only trigger if it wasn't a drag
-                                const actionToEdit = fightActions.find(a => a.id.toString() === item.dataset.id);
-                                if (actionToEdit) {
-                                    openModal(actionToEdit.type, actionToEdit.side, actionToEdit);
-                                }
-                            }
-                        }, 500); // 500ms for long press
-                    };
-
-                    const handlePressMove = () => {
-                        hasMoved = true;
-                        clearTimeout(pressTimer);
-                    };
-
-                    const handlePressEnd = () => {
-                        clearTimeout(pressTimer);
-                    };
-
-                    item.addEventListener('mousedown', handlePressStart);
-                    item.addEventListener('touchstart', handlePressStart, { passive: true });
-
-                    item.addEventListener('mousemove', handlePressMove);
-                    item.addEventListener('touchmove', handlePressMove, { passive: true });
-
-                    item.addEventListener('mouseup', handlePressEnd);
-                    item.addEventListener('touchend', handlePressEnd);
-                    item.addEventListener('mouseleave', handlePressEnd); // Also cancel on mouse leave
+                    item.addEventListener('click', () => {
+                        const actionToEdit = fightActions.find(a => a.id.toString() === item.dataset.id);
+                        if (actionToEdit) {
+                            openActionModal(actionToEdit.type, actionToEdit.side, actionToEdit);
+                        }
+                    });
 
                     list.appendChild(item);
                 });
@@ -730,12 +782,13 @@
                     }
                     
                     if (points > 0) {
-                        const [min, sec] = act.timestamp.split(':').map(Number);
-                        const timeInSeconds = min * 60 + sec;
+                        const actionTimeInSeconds = timeToSeconds(act.timestamp);
+                        const timeElapsed = roundDuration - actionTimeInSeconds;
+
                         let timeInterval;
-                        if (timeInSeconds < 30) timeInterval = '0:00-0:30';
-                        else if (timeInSeconds < 60) timeInterval = '0:30-1:00';
-                        else if (timeInSeconds < 90) timeInterval = '1:00-1:30';
+                        if (timeElapsed < 30) timeInterval = '0:00-0:30';
+                        else if (timeElapsed < 60) timeInterval = '0:30-1:00';
+                        else if (timeElapsed < 90) timeInterval = '1:00-1:30';
                         else timeInterval = '1:30-2:00';
                         
                         const scoringAthleteStats = isFoul ? (act.athlete === 'atleta1' ? stats2 : stats1) : (act.athlete === 'atleta1' ? stats1 : stats2);
@@ -893,8 +946,9 @@
                 finalY = doc.lastAutoTable.finalY;
 
                 // --- PARÂMETROS DA LUTA ---
-                finalY += 15;
-                checkPageBreak(20);
+                doc.addPage(); // Força uma nova página
+                finalY = margin; // Reseta a posição Y para a margem superior
+                
                 doc.setFontSize(16);
                 doc.text('Parâmetros da Luta', 14, finalY);
                 finalY += 10;
@@ -1056,25 +1110,21 @@
             };
 
             const shareOrCopyForAI = async (text) => {
-                // Verifica se a Web Share API é suportada (comum em dispositivos móveis)
                 if (navigator.share) {
                     try {
                         await navigator.share({
                             title: 'Análise de Luta TKD Scout',
                             text: text,
                         });
-                        // Após o compartilhamento (ou cancelamento), esconde o modal.
                         hideConfirm();
                     } catch (err) {
                         console.error('Share failed or was cancelled', err);
-                        // Mesmo se falhar (ex: usuário cancelou), esconde o modal.
                         hideConfirm();
                     }
                 } else {
-                    // Fallback para desktop: copiar para a área de transferência
                     const textarea = document.createElement('textarea');
                     textarea.value = text;
-                    textarea.style.position = 'fixed'; // Previne rolagem da página
+                    textarea.style.position = 'fixed';
                     textarea.style.opacity = 0;
                     document.body.appendChild(textarea);
                     textarea.select();
@@ -1097,7 +1147,7 @@
                         "Tela Cheia no iOS",
                         "Para usar o modo de tela cheia, adicione este aplicativo à sua Tela de Início: toque no ícone de Compartilhar e depois em 'Adicionar à Tela de Início'.",
                         () => { hideConfirm(); },
-                        false // Apenas botão OK
+                        false
                     );
                     return;
                 }
@@ -1164,15 +1214,13 @@
             nextRoundBtn.addEventListener('click', nextRound);
             fullscreenBtn.addEventListener('click', toggleFullScreen);
             document.addEventListener('fullscreenchange', updateFullscreenIcons);
+            
             helpBtn.addEventListener('click', () => {
                 helpModal.classList.remove('hidden');
                 modalOverlay.classList.remove('hidden');
             });
-            helpModalClose.addEventListener('click', () => {
-                 helpModal.classList.add('hidden');
-                 modalOverlay.classList.add('hidden');
-            });
-
+            
+            timerDisplay.addEventListener('click', openTimeEditModal);
 
             endFightBtn.addEventListener('click', () => {
                 if (fightActions.length === 0) {
@@ -1181,8 +1229,8 @@
                 }
                 showConfirm(
                     "Finalizar Luta",
-                    "", // Texto genérico é ocultado
-                    () => { // Callback do botão OK
+                    "",
+                    () => {
                         stopTimer();
                         const comment = commentCheckbox.checked ? scoutComment.value : '';
 
@@ -1199,8 +1247,8 @@
                            hideConfirm();
                         }
                     },
-                    true, // Mostra o botão cancelar
-                    true // Indica que é o modal de finalizar luta
+                    true,
+                    true
                 );
             });
 
@@ -1212,22 +1260,18 @@
                 btn.addEventListener('click', () => {
                     const action = btn.dataset.action;
                     const side = btn.dataset.side;
-                    openModal(action, side);
+                    openActionModal(action, side);
                 });
             });
 
-            modalOverlay.addEventListener('click', () => {
-                closeModal();
-                helpModal.classList.add('hidden');
-                modalOverlay.classList.add('hidden');
-            });
-
-
+            modalOverlay.addEventListener('click', closeAllModals);
+            
+            // Listeners do Modal de Ação
             removeActionBtn.addEventListener('click', () => {
                 if (!editingActionId) return;
                 fightActions = fightActions.filter(act => act.id !== editingActionId);
                 renderActions();
-                closeModal();
+                closeAllModals();
             });
 
             confirmBtn.addEventListener('click', () => {
@@ -1236,8 +1280,7 @@
                     if (actionIndex > -1) {
                         fightActions[actionIndex].details = currentAction.details;
                         fightActions[actionIndex].timestamp = modalActionTime.value;
-                        // Re-sort array by timestamp
-                        fightActions.sort((a, b) => timeToSeconds(a.timestamp) - timeToSeconds(b.timestamp));
+                        fightActions.sort((a, b) => timeToSeconds(b.timestamp) - timeToSeconds(a.timestamp));
                     }
                 } else {
                     const newAction = {
@@ -1252,25 +1295,52 @@
                     fightActions.push(newAction);
                 }
                 renderActions();
-                closeModal();
+                closeAllModals();
             });
 
             document.querySelectorAll('#action-modal button[data-value]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const group = btn.parentElement;
+                    const group = btn.closest('[id$="-group"]');
                     const property = group.id.replace('-group', '');
                     const value = btn.dataset.value;
                     
-                    if (btn.classList.contains('bg-blue-500')) {
-                        btn.classList.remove('bg-blue-500', 'text-white');
+                    const activeColor = modalContextAthlete === 'atleta1' ? 'bg-red-500' : 'bg-blue-500';
+                    const isCurrentlyActive = btn.classList.contains(activeColor);
+
+                    // Reset all buttons in the group to their default state
+                    group.querySelectorAll('button').forEach(b => {
+                        b.classList.remove('bg-red-500', 'bg-blue-500', 'text-white');
+                        b.classList.add('bg-white');
+                    });
+
+                    if (isCurrentlyActive) {
+                        // If it was active, we just deselected it by the loop above.
                         delete currentAction.details[property];
                     } else {
-                        group.querySelectorAll('button').forEach(b => b.classList.remove('bg-blue-500', 'text-white'));
-                        btn.classList.add('bg-blue-500', 'text-white');
+                        // Otherwise, select the clicked button
+                        btn.classList.remove('bg-white');
+                        btn.classList.add(activeColor, 'text-white');
                         currentAction.details[property] = value;
                     }
                 });
             });
+
+            // Listeners do Modal de Edição de Tempo
+            confirmTimeBtn.addEventListener('click', () => {
+                const newTotalSeconds = timeToSeconds(timeInput.value);
+                if (!isNaN(newTotalSeconds) && newTotalSeconds >= 0) {
+                    roundDuration = newTotalSeconds;
+                    seconds = newTotalSeconds;
+                    updateTimerDisplay();
+                    closeAllModals();
+                } else {
+                    alert("Formato de tempo inválido. Use mm:ss.");
+                }
+            });
+
+            cancelTimeBtn.addEventListener('click', closeAllModals);
+            helpModalClose.addEventListener('click', closeAllModals);
+
 
             // --- INICIALIZAÇÃO ---
             updateActiveAthleteUI();
@@ -1280,22 +1350,27 @@
             const sortableOptions = {
                 group: 'shared',
                 animation: 150,
+                delay: 150, // Atraso para iniciar o arrasto, permitindo cliques
+                delayOnTouchOnly: true, // Atraso apenas no toque
                 onEnd: (evt) => {
-                    // 1. Obter a lista de IDs na nova ordem do DOM para o round atual
+                    if (evt.oldIndex === evt.newIndex && evt.from === evt.to) {
+                        return; // Não faz nada se não houve mudança de posição
+                    }
+
                     const currentRoundActionsMap = new Map(fightActions.filter(a => a.round === currentRound).map(a => [a.id.toString(), a]));
                     const otherRoundsActions = fightActions.filter(a => a.round !== currentRound);
                     
                     const allItemsInRound = [...atleta1List.children, ...atleta2List.children];
-                    const newOrderedRoundActions = allItemsInRound.map(item => currentRoundActionsMap.get(item.dataset.id));
+                    let newOrderedRoundActions = allItemsInRound.map(item => currentRoundActionsMap.get(item.dataset.id)).filter(Boolean);
 
-                    // 2. Atualizar o atleta se a ação mudou de lista
                     const movedActionId = parseInt(evt.item.dataset.id);
                     const movedAction = newOrderedRoundActions.find(a => a.id === movedActionId);
+                    if (!movedAction) return;
+
                     if (evt.to !== evt.from) {
                         movedAction.athlete = evt.to.id.includes('atleta1') ? 'atleta1' : 'atleta2';
                     }
 
-                    // 3. Recalcular o timestamp da ação movida
                     const movedActionIndex = newOrderedRoundActions.findIndex(a => a.id === movedActionId);
                     const prevAction = newOrderedRoundActions[movedActionIndex - 1];
                     const nextAction = newOrderedRoundActions[movedActionIndex + 1];
@@ -1306,23 +1381,20 @@
                         const nextTime = timeToSeconds(nextAction.timestamp);
                         newTimeInSeconds = (prevTime + nextTime) / 2;
                     } else if (prevAction) {
-                        newTimeInSeconds = timeToSeconds(prevAction.timestamp) + 1;
+                        const prevTime = timeToSeconds(prevAction.timestamp);
+                        newTimeInSeconds = prevTime > 1 ? prevTime - 1 : prevTime / 2;
                     } else if (nextAction) {
-                        const nextTime = timeToSeconds(nextAction.timestamp);
-                        newTimeInSeconds = nextTime > 1 ? nextTime - 1 : nextTime / 2;
+                        newTimeInSeconds = timeToSeconds(nextAction.timestamp) + 1;
                     } else {
-                        newTimeInSeconds = timeToSeconds(movedAction.timestamp); // Mantém o original se for a única ação
+                        newTimeInSeconds = timeToSeconds(movedAction.timestamp);
                     }
                     movedAction.timestamp = formatTime(newTimeInSeconds);
 
-                    // 4. Reordenar a lista do round atual pelo novo tempo
-                    newOrderedRoundActions.sort((a, b) => timeToSeconds(a.timestamp) - timeToSeconds(b.timestamp));
+                    newOrderedRoundActions.sort((a, b) => timeToSeconds(b.timestamp) - timeToSeconds(a.timestamp));
 
-                    // 5. Juntar com as ações dos outros rounds e atualizar o array principal
                     fightActions = [...otherRoundsActions, ...newOrderedRoundActions];
-                    fightActions.sort((a,b) => a.round - b.round || timeToSeconds(a.timestamp) - timeToSeconds(b.timestamp));
+                    fightActions.sort((a,b) => a.round - b.round || timeToSeconds(b.timestamp) - timeToSeconds(a.timestamp));
 
-                    // 6. Renderizar a UI
                     renderActions();
                 }
             };

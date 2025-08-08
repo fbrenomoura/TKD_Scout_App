@@ -180,7 +180,7 @@
                     <span class="slider"></span>
                 </label>
                 <button data-action="clinch" class="action-button bg-white p-2 rounded-full shadow-md flex justify-center items-center">
-                    <img src="resources/clinch.png" alt="Clinch" class="w-16 h-16"> <!-- Ícone não encontrado na imagem, mantido o original -->
+                    <img src="resources/clinch.png" alt="Clinch" class="w-16 h-16">
                 </button>
                  <button data-action="falta" class="action-button bg-white p-2 rounded-full shadow-md flex justify-center items-center">
                     <img id="falta-icon" src="resources/faltaVermelho.png" alt="Falta" class="w-16 h-16">
@@ -261,6 +261,27 @@
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
             <h3 id="confirm-modal-title" class="text-lg font-bold mb-2 text-gray-800"></h3>
             <p id="confirm-modal-text" class="text-gray-600 mb-6"></p>
+            <div id="end-fight-options" class="hidden space-y-4 text-left mb-6">
+                 <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" id="pdf-checkbox" class="form-checkbox h-5 w-5 text-blue-600" checked>
+                    <span class="text-gray-700">Gerar relatório PDF</span>
+                </label>
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" id="json-checkbox" class="form-checkbox h-5 w-5 text-blue-600">
+                    <span class="text-gray-700">Gerar JSON da análise</span>
+                </label>
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" id="comment-checkbox" class="form-checkbox h-5 w-5 text-blue-600">
+                    <span class="text-gray-700">Adicionar comentário</span>
+                </label>
+                <div id="comment-container" class="hidden ml-8">
+                    <textarea id="scout-comment" rows="3" class="w-full border border-gray-300 rounded-md p-2 mt-2 text-sm" placeholder="Insira seu comentário aqui..."></textarea>
+                </div>
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" id="ai-checkbox" class="form-checkbox h-5 w-5 text-blue-600">
+                    <span class="text-gray-700">Compartilhar com IA</span>
+                </label>
+            </div>
             <div class="flex justify-center gap-4">
                 <button id="confirm-modal-cancel" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300">Cancelar</button>
                 <button id="confirm-modal-ok" class="bg-red-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-600">Confirmar</button>
@@ -312,6 +333,15 @@
             const confirmModalCancel = document.getElementById('confirm-modal-cancel');
             const confirmModalOk = document.getElementById('confirm-modal-ok');
 
+            // Elementos do Modal de Finalizar Luta
+            const endFightOptions = document.getElementById('end-fight-options');
+            const pdfCheckbox = document.getElementById('pdf-checkbox');
+            const jsonCheckbox = document.getElementById('json-checkbox');
+            const commentCheckbox = document.getElementById('comment-checkbox');
+            const aiCheckbox = document.getElementById('ai-checkbox');
+            const commentContainer = document.getElementById('comment-container');
+            const scoutComment = document.getElementById('scout-comment');
+
 
             // --- ESTADO DA APLICAÇÃO ---
             let activeAthlete = 'atleta1';
@@ -327,13 +357,21 @@
             let confirmCallback = null;
 
             // --- FUNÇÕES DO MODAL DE CONFIRMAÇÃO ---
-            const showConfirm = (title, text, onConfirm, showCancel = true) => {
+            const showConfirm = (title, text, onConfirm, showCancel = true, isEndFight = false) => {
                 confirmModalTitle.textContent = title;
                 confirmModalText.textContent = text;
                 confirmCallback = onConfirm;
                 
                 confirmModalCancel.style.display = showCancel ? 'inline-block' : 'none';
                 confirmModalOk.textContent = showCancel ? 'Confirmar' : 'OK';
+
+                if (isEndFight) {
+                    endFightOptions.classList.remove('hidden');
+                    confirmModalText.classList.add('hidden'); // Oculta o texto genérico
+                } else {
+                    endFightOptions.classList.add('hidden');
+                    confirmModalText.classList.remove('hidden');
+                }
                 
                 if (!showCancel) {
                     confirmModalOk.classList.remove('bg-red-500', 'hover:bg-red-600');
@@ -351,13 +389,20 @@
                 confirmModal.classList.add('hidden');
                 confirmModal.classList.remove('flex');
                 confirmCallback = null;
+                // Reseta as opções do modal de finalizar luta para o padrão
+                pdfCheckbox.checked = true;
+                jsonCheckbox.checked = false;
+                commentCheckbox.checked = false;
+                aiCheckbox.checked = false;
+                commentContainer.classList.add('hidden');
+                scoutComment.value = '';
             };
 
             confirmModalOk.addEventListener('click', () => {
                 if (confirmCallback) {
                     confirmCallback();
                 }
-                hideConfirm();
+                // Não esconde o modal aqui, a função de callback o fará se necessário
             });
 
             confirmModalCancel.addEventListener('click', hideConfirm);
@@ -411,6 +456,7 @@
                         roundDisplay.textContent = currentRound;
                         fightActions = [];
                         renderActions();
+                        hideConfirm();
                     }
                 );
             };
@@ -425,6 +471,7 @@
                         roundDisplay.textContent = currentRound;
                         resetRoundTimer();
                         renderActions();
+                        hideConfirm();
                     }
                 );
             };
@@ -706,7 +753,7 @@
                 return doc.lastAutoTable.finalY + 95;
             };
 
-            const generatePDF = () => {
+            const generatePDF = (comment = '') => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
@@ -737,8 +784,23 @@
                 doc.text(`Placar Final: ${stats1.pontos} x ${stats2.pontos}`, 14, 38);
                 finalY = 45;
 
+                // --- COMENTÁRIO DO SCOUT (SE EXISTIR) ---
+                if (comment.trim() !== '') {
+                    checkPageBreak(30);
+                    doc.setFontSize(16);
+                    doc.text('Comentário do Scout', 14, finalY);
+                    finalY += 7;
+                    doc.setFontSize(11);
+                    doc.setTextColor(80);
+                    const commentLines = doc.splitTextToSize(comment, 180);
+                    doc.text(commentLines, 14, finalY);
+                    finalY += (commentLines.length * 5) + 5;
+                }
+
                 // --- SÚMULA DA LUTA ---
+                checkPageBreak(20);
                 doc.setFontSize(16);
+                doc.setTextColor(0);
                 doc.text('Súmula da Luta', 14, finalY);
                 const sumulaBody = fightActions.map(act => {
                     let actionDesc = '';
@@ -863,7 +925,85 @@
 
                 doc.save(`relatorio_luta_${Date.now()}.pdf`);
             };
+            
+            // --- Funções para compartilhar com IA ---
+            const generateReportTextForAI = (comment = '') => {
+                const athlete1Name = document.getElementById('atleta1-name').value;
+                const athlete2Name = document.getElementById('atleta2-name').value;
+                const { stats1, stats2 } = calculateAllFightStats();
+                
+                let reportText = "Faça uma análise dessa avaliação de scout de uma luta de taekwondo, e me retorne com uma estratégia para ganhar dos atletas.\n\n";
+                
+                reportText += `--- RELATÓRIO DE LUTA ---\n`;
+                reportText += `Luta: ${athlete1Name} vs ${athlete2Name}\n`;
+                reportText += `Data: ${new Date().toLocaleDateString('pt-BR')} | Rounds: ${currentRound}\n`;
+                reportText += `Placar Final: ${stats1.pontos} (Vermelho) x ${stats2.pontos} (Azul)\n\n`;
 
+                if (comment.trim() !== '') {
+                    reportText += `--- COMENTÁRIO DO SCOUT ---\n${comment}\n\n`;
+                }
+
+                reportText += `--- SÚMULA DA LUTA ---\n`;
+                reportText += `Round | Tempo | Atleta | Ação | Detalhes\n`;
+                fightActions.forEach(act => {
+                    let actionDesc = '';
+                    if (act.type === 'chute') actionDesc = `Chute ${act.details.contato || ''}`;
+                    else if (act.type === 'soco') actionDesc = 'Soco';
+                    else if (act.type === 'clinch') actionDesc = 'Clinch';
+                    else if (act.type === 'falta') actionDesc = `Falta (${act.details.falta})`;
+                    const details = act.details.situacao ? act.details.situacao.replace('defesa', 'Contra-Ataque') : '';
+                    const athleteName = act.athlete === 'atleta1' ? athlete1Name : athlete2Name;
+                    reportText += `${act.round} | ${act.timestamp} | ${athleteName} | ${actionDesc} | ${details}\n`;
+                });
+                reportText += "\n";
+
+                const athletes = [
+                    { name: athlete1Name, stats: stats1, opponentStats: stats2 },
+                    { name: athlete2Name, stats: stats2, opponentStats: stats1 }
+                ];
+
+                athletes.forEach(athlete => {
+                    reportText += `--- ANÁLISE DE PERFORMANCE: ${athlete.name} ---\n`;
+                    reportText += `Pontos Totais: ${athlete.stats.pontos} | Faltas Cometidas: ${athlete.stats.faltas}\n\n`;
+                    reportText += `Área que Pontua (%): Meio ${athlete.stats.areaPontua['Meio']}%, Canto Ofens. ${athlete.stats.areaPontua['Canto Ofensivo']}%, Canto Defens. ${athlete.stats.areaPontua['Canto Defensivo']}%\n`;
+                    reportText += `Situação que Pontua (%): Ataque ${athlete.stats.situacaoPontua['Ataque']}%, Contra-Ataque ${athlete.stats.situacaoPontua['Contra-Ataque']}%, Clinch ${athlete.stats.situacaoPontua['Clinch']}%\n\n`;
+                });
+                
+                return reportText;
+            };
+
+            const shareOrCopyForAI = async (text) => {
+                // Verifica se a Web Share API é suportada (comum em dispositivos móveis)
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: 'Análise de Luta TKD Scout',
+                            text: text,
+                        });
+                        // Após o compartilhamento (ou cancelamento), esconde o modal.
+                        hideConfirm();
+                    } catch (err) {
+                        console.error('Share failed or was cancelled', err);
+                        // Mesmo se falhar (ex: usuário cancelou), esconde o modal.
+                        hideConfirm();
+                    }
+                } else {
+                    // Fallback para desktop: copiar para a área de transferência
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed'; // Previne rolagem da página
+                    textarea.style.opacity = 0;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        showConfirm("Copiado!", "O texto para análise da IA foi copiado para a área de transferência.", () => { hideConfirm(); }, false);
+                    } catch (err) {
+                        showConfirm("Erro", "Não foi possível copiar o texto.", () => { hideConfirm(); }, false);
+                    }
+                    document.body.removeChild(textarea);
+                }
+            };
 
             // --- EVENT LISTENERS ---
             athleteToggle.addEventListener('change', (e) => {
@@ -877,18 +1017,36 @@
 
             endFightBtn.addEventListener('click', () => {
                 if (fightActions.length === 0) {
-                    showConfirm("Nenhuma Ação", "Nenhuma ação foi registrada. Adicione ações antes de finalizar a luta.", () => {}, false);
+                    showConfirm("Nenhuma Ação", "Nenhuma ação foi registrada. Adicione ações antes de finalizar a luta.", () => { hideConfirm(); }, false);
                     return;
                 }
                 showConfirm(
-                    "Finalizar Luta?",
-                    "Deseja realmente finalizar a luta? Os relatórios serão gerados.",
-                    () => {
+                    "Finalizar Luta",
+                    "", // Texto genérico é ocultado
+                    () => { // Callback do botão OK
                         stopTimer();
-                        setTimeout(generatePDF, 100); // Pequeno delay para garantir a renderização
-                        generateJSON();
-                    }
+                        const comment = commentCheckbox.checked ? scoutComment.value : '';
+
+                        if (pdfCheckbox.checked) {
+                            setTimeout(() => generatePDF(comment), 100);
+                        }
+                        if (jsonCheckbox.checked) {
+                            generateJSON();
+                        }
+                        if (aiCheckbox.checked) {
+                            const aiText = generateReportTextForAI(comment);
+                            shareOrCopyForAI(aiText);
+                        } else {
+                           hideConfirm();
+                        }
+                    },
+                    true, // Mostra o botão cancelar
+                    true // Indica que é o modal de finalizar luta
                 );
+            });
+
+            commentCheckbox.addEventListener('change', () => {
+                commentContainer.classList.toggle('hidden', !commentCheckbox.checked);
             });
 
             actionButtons.forEach(btn => {

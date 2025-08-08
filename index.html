@@ -108,6 +108,10 @@
         .chart-canvas {
             display: none !important;
         }
+        
+        #help-modal-header {
+            cursor: move;
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex justify-center items-center min-h-screen">
@@ -145,15 +149,22 @@
                     <div id="timer" class="text-4xl font-mono font-bold text-gray-800">00:00</div>
                 </div>
                 <div class="flex justify-around items-center mt-2 text-gray-600">
+                    <button id="help-btn" class="p-2 rounded-full hover:bg-blue-100 hover:text-blue-500" title="Ajuda">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    </button>
                     <button id="reset-btn" class="p-2 rounded-full hover:bg-red-100 hover:text-red-500" title="Reiniciar Luta">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                    <button id="fullscreen-btn" class="p-2 rounded-full hover:bg-gray-200" title="Tela Cheia">
+                        <svg id="fullscreen-enter-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                        <svg id="fullscreen-exit-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
                     </button>
                     <button id="play-pause-btn" class="p-2 rounded-full hover:bg-gray-200" title="Play/Pause">
                         <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                         <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
                     </button>
                     <button id="next-round-btn" class="p-2 rounded-full hover:bg-green-200 text-green-600" title="Próximo Round">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
                     </button>
                     <button id="end-fight-btn" class="p-2 rounded-full hover:bg-red-200 text-red-500" title="Finalizar Luta">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><line x1="10" y1="10" x2="14" y2="14"></line><line x1="14" y1="10" x2="10" y2="14"></line></svg>
@@ -202,6 +213,10 @@
     <div id="action-modal" class="fixed bottom-0 left-0 right-0 bg-gray-50 shadow-2xl rounded-t-2xl p-4 z-50 max-w-md mx-auto">
         <h3 id="modal-title" class="text-xl font-bold text-center mb-4">Detalhes da Ação</h3>
         <div class="space-y-4">
+             <div id="time-editor" class="hidden mb-2">
+                <label class="font-semibold text-gray-700">Tempo da Ação (mm:ss)</label>
+                <input type="text" id="modal-action-time" class="w-full border border-gray-300 rounded-md p-2 mt-1 text-center font-mono" placeholder="00:00">
+            </div>
             <div id="kick-options" class="hidden">
                 <div class="mb-2">
                     <label class="font-semibold text-gray-700">Saída</label>
@@ -249,7 +264,7 @@
             </div>
         </div>
         <div class="flex gap-4 mt-6">
-            <button id="cancel-action-btn" class="flex-1 bg-gray-300 text-gray-800 p-3 rounded-lg font-bold">Cancelar</button>
+            <button id="remove-action-btn" class="flex-1 bg-red-500 text-white p-3 rounded-lg font-bold hidden">Remover</button>
             <button id="confirm-action-btn" class="flex-1 bg-green-500 text-white p-3 rounded-lg font-bold">Confirmar</button>
         </div>
     </div>
@@ -289,6 +304,33 @@
         </div>
     </div>
 
+    <!-- Modal de Ajuda -->
+    <div id="help-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 w-full max-w-md z-50 hidden">
+        <div id="help-modal-header" class="flex justify-between items-center pb-3 mb-3 border-b">
+            <h3 class="text-lg font-bold text-gray-800">Manual do Usuário</h3>
+            <button id="help-modal-close" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+        </div>
+        <div class="text-sm text-gray-700 space-y-3 max-h-80 overflow-y-auto">
+            <p><strong>Controles da Luta:</strong> Use os botões na parte inferior para iniciar/pausar o cronômetro, ir para o próximo round, reiniciar ou finalizar a luta.</p>
+            <p><strong>Registro de Ações:</strong> Selecione o atleta ativo usando o seletor (Vermelho/Azul). Toque nos botões de ação (chute, soco, etc.) para abrir o menu de detalhes e registrar uma ação.</p>
+            <p><strong>Editar/Remover Ação:</strong> Pressione e segure uma ação na lista para abrir o menu de edição. Lá você pode alterar os detalhes, o tempo da ação ou removê-la.</p>
+            <p><strong>Reordenar Ações:</strong> Arraste e solte uma ação na lista para reordená-la. O tempo da ação será ajustado automaticamente para se encaixar na nova posição.</p>
+            <p><strong>Tela Cheia:</strong> Use o botão de tela cheia para uma experiência imersiva. Em dispositivos iOS, você precisará primeiro "Adicionar à Tela de Início" pelo menu de compartilhamento do Safari.</p>
+            <p><strong>Finalizar Luta:</strong> Ao finalizar, você terá opções para gerar um relatório em PDF, um arquivo JSON com os dados brutos, adicionar comentários e compartilhar a análise com uma IA para obter estratégias.</p>
+            <hr class="my-4">
+            <h4 class="font-bold">Autor</h4>
+            <p>Este projeto foi idealizado e desenvolvido por <strong>Francisco Breno Moura Alves</strong>.</p>
+            <ul class="list-disc list-inside">
+                <li><strong>Instagram:</strong> <a href="https://www.instagram.com/fbrenomoura/" target="_blank" class="text-blue-600 hover:underline">@fbrenomoura</a></li>
+                <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/fbrenomoura/" target="_blank" class="text-blue-600 hover:underline">Francisco Breno Moura Alves</a></li>
+            </ul>
+            <h4 class="font-bold mt-2">🙏 Agradecimentos</h4>
+            <ul class="list-disc list-inside">
+                <li><strong>Samuel Yure (Sayu):</strong> Pelo design dos ícones e revisões de UI/UX.</li>
+            </ul>
+        </div>
+    </div>
+
 
     <canvas id="barChartCanvas" width="400" height="200" class="chart-canvas"></canvas>
     <canvas id="spiderChartCanvas" width="400" height="400" class="chart-canvas"></canvas>
@@ -304,11 +346,17 @@
             const resetBtn = document.getElementById('reset-btn');
             const nextRoundBtn = document.getElementById('next-round-btn');
             const endFightBtn = document.getElementById('end-fight-btn');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const fullscreenEnterIcon = document.getElementById('fullscreen-enter-icon');
+            const fullscreenExitIcon = document.getElementById('fullscreen-exit-icon');
+            const helpBtn = document.getElementById('help-btn');
+            const helpModal = document.getElementById('help-modal');
+            const helpModalClose = document.getElementById('help-modal-close');
             const actionButtons = document.querySelectorAll('.action-button');
             const actionModal = document.getElementById('action-modal');
             const modalOverlay = document.getElementById('modal-overlay');
-            const cancelBtn = document.getElementById('cancel-action-btn');
             const confirmBtn = document.getElementById('confirm-action-btn');
+            const removeActionBtn = document.getElementById('remove-action-btn');
             const modalTitle = document.getElementById('modal-title');
             const kickOptions = document.getElementById('kick-options');
             const genericOptions = document.getElementById('generic-options');
@@ -318,6 +366,8 @@
             const atleta2List = document.getElementById('atleta2-list');
             const atleta1ScoreEl = document.getElementById('atleta1-score');
             const atleta2ScoreEl = document.getElementById('atleta2-score');
+            const timeEditor = document.getElementById('time-editor');
+            const modalActionTime = document.getElementById('modal-action-time');
             
             // Ícones de Ação
             const chuteEsquerdoIcon = document.getElementById('chute-esquerdo-icon');
@@ -409,9 +459,17 @@
 
 
             // --- FUNÇÕES DO CRONÔMETRO E ROUNDS ---
+            const timeToSeconds = (timeStr) => {
+                const parts = timeStr.split(':');
+                if (parts.length !== 2) return 0;
+                const minutes = parseInt(parts[0], 10) || 0;
+                const seconds = parseInt(parts[1], 10) || 0;
+                return (minutes * 60) + seconds;
+            };
+
             const formatTime = (totalSeconds) => {
                 const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-                const secondsValue = (totalSeconds % 60).toString().padStart(2, '0');
+                const secondsValue = Math.round(totalSeconds % 60).toString().padStart(2, '0');
                 return `${minutes}:${secondsValue}`;
             };
 
@@ -521,10 +579,16 @@
                 document.querySelectorAll('#action-modal button[data-value]').forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
 
                 if(actionToEdit) {
+                    removeActionBtn.classList.remove('hidden');
+                    timeEditor.classList.remove('hidden');
+                    modalActionTime.value = actionToEdit.timestamp;
                     for(const key in actionToEdit.details) {
                         const btn = document.querySelector(`#${key}-group button[data-value="${actionToEdit.details[key]}"]`);
                         if(btn) btn.classList.add('bg-blue-500', 'text-white');
                     }
+                } else {
+                    removeActionBtn.classList.add('hidden');
+                    timeEditor.classList.add('hidden');
                 }
 
                 actionModal.classList.add('active');
@@ -555,7 +619,7 @@
                         if (action.details.contato === 'colete') points = 2;
                         if (action.details.contato === 'capacete') points = 3;
                         if (action.details.saida === 'giro' && points > 0) points += 2;
-                    } else if (action.type === 'soco') { // CORREÇÃO: Pontua qualquer soco confirmado.
+                    } else if (action.type === 'soco') { 
                         points = 1;
                     } else if (action.type === 'falta') {
                         if (action.athlete === 'atleta1') roundScore2 += 1; else roundScore1 += 1;
@@ -576,40 +640,47 @@
                     const item = document.createElement('div');
                     item.dataset.id = action.id;
                     item.className = `${bgColor} ${textColor} p-2 rounded-lg text-sm flex justify-between items-center cursor-move`;
-                    item.innerHTML = `
-                        <span>${actionText}</span>
-                        <button data-id="${action.id}" class="delete-action-btn text-gray-500 hover:text-red-500">&times;</button>
-                    `;
+                    item.innerHTML = `<span>${action.timestamp} - ${actionText}</span>`;
 
-                    const startPress = (e) => {
-                        e.preventDefault();
+                    let pressTimer = null;
+                    let hasMoved = false;
+
+                    const handlePressStart = (e) => {
+                        hasMoved = false;
                         pressTimer = setTimeout(() => {
-                            const actionToEdit = fightActions.find(a => a.id == action.id);
-                            if(actionToEdit) openModal(actionToEdit.type, actionToEdit.side, actionToEdit);
-                        }, 500);
+                            if (!hasMoved) { // Only trigger if it wasn't a drag
+                                const actionToEdit = fightActions.find(a => a.id.toString() === item.dataset.id);
+                                if (actionToEdit) {
+                                    openModal(actionToEdit.type, actionToEdit.side, actionToEdit);
+                                }
+                            }
+                        }, 500); // 500ms for long press
                     };
-                    const cancelPress = () => clearTimeout(pressTimer);
-                    
-                    item.addEventListener('mousedown', startPress);
-                    item.addEventListener('touchstart', startPress);
-                    item.addEventListener('mouseup', cancelPress);
-                    item.addEventListener('mouseleave', cancelPress);
-                    item.addEventListener('touchend', cancelPress);
+
+                    const handlePressMove = () => {
+                        hasMoved = true;
+                        clearTimeout(pressTimer);
+                    };
+
+                    const handlePressEnd = () => {
+                        clearTimeout(pressTimer);
+                    };
+
+                    item.addEventListener('mousedown', handlePressStart);
+                    item.addEventListener('touchstart', handlePressStart, { passive: true });
+
+                    item.addEventListener('mousemove', handlePressMove);
+                    item.addEventListener('touchmove', handlePressMove, { passive: true });
+
+                    item.addEventListener('mouseup', handlePressEnd);
+                    item.addEventListener('touchend', handlePressEnd);
+                    item.addEventListener('mouseleave', handlePressEnd); // Also cancel on mouse leave
 
                     list.appendChild(item);
                 });
 
                 atleta1ScoreEl.textContent = roundScore1.toString().padStart(2, '0');
                 atleta2ScoreEl.textContent = roundScore2.toString().padStart(2, '0');
-                
-                document.querySelectorAll('.delete-action-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const idToDelete = e.currentTarget.dataset.id;
-                        fightActions = fightActions.filter(act => act.id != idToDelete);
-                        renderActions();
-                    });
-                });
             };
             
             // --- FUNÇÕES DE GERAÇÃO DE ARQUIVOS ---
@@ -654,7 +725,7 @@
                         if (act.details.contato === 'colete') points = 2;
                         if (act.details.contato === 'capacete') points = 3;
                         if (act.details.saida === 'giro' && points > 0) points += 2;
-                    } else if (act.type === 'soco') { // CORREÇÃO: Pontua qualquer soco confirmado para as estatísticas finais.
+                    } else if (act.type === 'soco') { 
                         points = 1;
                     }
                     
@@ -874,33 +945,45 @@
                 doc.text('Visão Geral de Performance', 14, finalY);
                 const spiderCtx = spiderCanvas.getContext('2d');
                 if (spiderChart) spiderChart.destroy();
+
+                const spiderLabels = [
+                    'Chute Cabeça', 'Chute Colete', 'Chute c/ Giro',
+                    'Soco', 'Ataques', 'Contra-Ataques', 'Faltas'
+                ];
+
+                const athlete1Data = [
+                    fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'chute' && a.details.contato === 'capacete').length,
+                    fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'chute' && a.details.contato === 'colete').length,
+                    fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'chute' && a.details.saida === 'giro').length,
+                    fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'soco').length,
+                    fightActions.filter(a => a.athlete === 'atleta1' && a.details.situacao === 'ataque').length,
+                    fightActions.filter(a => a.athlete === 'atleta1' && a.details.situacao === 'defesa').length,
+                    stats1.faltas
+                ];
+
+                const athlete2Data = [
+                    fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'chute' && a.details.contato === 'capacete').length,
+                    fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'chute' && a.details.contato === 'colete').length,
+                    fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'chute' && a.details.saida === 'giro').length,
+                    fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'soco').length,
+                    fightActions.filter(a => a.athlete === 'atleta2' && a.details.situacao === 'ataque').length,
+                    fightActions.filter(a => a.athlete === 'atleta2' && a.details.situacao === 'defesa').length,
+                    stats2.faltas
+                ];
+
                 spiderChart = new Chart(spiderCtx, {
                     type: 'radar',
                     data: {
-                        labels: ['Ataque', 'Contra-Ataque', 'Clinch', 'Chutes', 'Socos', 'Faltas'],
+                        labels: spiderLabels,
                         datasets: [{
                             label: athlete1Name,
-                            data: [
-                                fightActions.filter(a => a.athlete === 'atleta1' && a.details.situacao === 'ataque').length,
-                                fightActions.filter(a => a.athlete === 'atleta1' && a.details.situacao === 'defesa').length,
-                                fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'clinch').length,
-                                fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'chute').length,
-                                fightActions.filter(a => a.athlete === 'atleta1' && a.type === 'soco').length,
-                                stats1.faltas
-                            ],
+                            data: athlete1Data,
                             backgroundColor: 'rgba(239, 83, 80, 0.2)',
                             borderColor: 'rgba(239, 83, 80, 1)',
                             borderWidth: 2
                         }, {
                             label: athlete2Name,
-                            data: [
-                                fightActions.filter(a => a.athlete === 'atleta2' && a.details.situacao === 'ataque').length,
-                                fightActions.filter(a => a.athlete === 'atleta2' && a.details.situacao === 'defesa').length,
-                                fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'clinch').length,
-                                fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'chute').length,
-                                fightActions.filter(a => a.athlete === 'atleta2' && a.type === 'soco').length,
-                                stats2.faltas
-                            ],
+                            data: athlete2Data,
                             backgroundColor: 'rgba(66, 165, 245, 0.2)',
                             borderColor: 'rgba(66, 165, 245, 1)',
                             borderWidth: 2
@@ -1005,6 +1088,71 @@
                 }
             };
 
+            const toggleFullScreen = () => {
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator.standalone);
+
+                if (isIOS && !isInStandaloneMode) {
+                    showConfirm(
+                        "Tela Cheia no iOS",
+                        "Para usar o modo de tela cheia, adicione este aplicativo à sua Tela de Início: toque no ícone de Compartilhar e depois em 'Adicionar à Tela de Início'.",
+                        () => { hideConfirm(); },
+                        false // Apenas botão OK
+                    );
+                    return;
+                }
+
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            };
+
+            const updateFullscreenIcons = () => {
+                if (document.fullscreenElement) {
+                    fullscreenEnterIcon.classList.add('hidden');
+                    fullscreenExitIcon.classList.remove('hidden');
+                } else {
+                    fullscreenEnterIcon.classList.remove('hidden');
+                    fullscreenExitIcon.classList.add('hidden');
+                }
+            };
+
+            const makeDraggable = (element, handle) => {
+                let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+                handle.onmousedown = dragMouseDown;
+
+                function dragMouseDown(e) {
+                    e = e || window.event;
+                    e.preventDefault();
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    document.onmouseup = closeDragElement;
+                    document.onmousemove = elementDrag;
+                }
+
+                function elementDrag(e) {
+                    e = e || window.event;
+                    e.preventDefault();
+                    pos1 = pos3 - e.clientX;
+                    pos2 = pos4 - e.clientY;
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    element.style.top = (element.offsetTop - pos2) + "px";
+                    element.style.left = (element.offsetLeft - pos1) + "px";
+                }
+
+                function closeDragElement() {
+                    document.onmouseup = null;
+                    document.onmousemove = null;
+                }
+            };
+
             // --- EVENT LISTENERS ---
             athleteToggle.addEventListener('change', (e) => {
                 activeAthlete = e.target.checked ? 'atleta2' : 'atleta1';
@@ -1014,6 +1162,17 @@
             playPauseBtn.addEventListener('click', toggleTimer);
             resetBtn.addEventListener('click', resetFight);
             nextRoundBtn.addEventListener('click', nextRound);
+            fullscreenBtn.addEventListener('click', toggleFullScreen);
+            document.addEventListener('fullscreenchange', updateFullscreenIcons);
+            helpBtn.addEventListener('click', () => {
+                helpModal.classList.remove('hidden');
+                modalOverlay.classList.remove('hidden');
+            });
+            helpModalClose.addEventListener('click', () => {
+                 helpModal.classList.add('hidden');
+                 modalOverlay.classList.add('hidden');
+            });
+
 
             endFightBtn.addEventListener('click', () => {
                 if (fightActions.length === 0) {
@@ -1057,14 +1216,28 @@
                 });
             });
 
-            cancelBtn.addEventListener('click', closeModal);
-            modalOverlay.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', () => {
+                closeModal();
+                helpModal.classList.add('hidden');
+                modalOverlay.classList.add('hidden');
+            });
+
+
+            removeActionBtn.addEventListener('click', () => {
+                if (!editingActionId) return;
+                fightActions = fightActions.filter(act => act.id !== editingActionId);
+                renderActions();
+                closeModal();
+            });
 
             confirmBtn.addEventListener('click', () => {
                 if (editingActionId) {
                     const actionIndex = fightActions.findIndex(a => a.id === editingActionId);
                     if (actionIndex > -1) {
                         fightActions[actionIndex].details = currentAction.details;
+                        fightActions[actionIndex].timestamp = modalActionTime.value;
+                        // Re-sort array by timestamp
+                        fightActions.sort((a, b) => timeToSeconds(a.timestamp) - timeToSeconds(b.timestamp));
                     }
                 } else {
                     const newAction = {
@@ -1102,16 +1275,54 @@
             // --- INICIALIZAÇÃO ---
             updateActiveAthleteUI();
             updateTimerDisplay();
+            makeDraggable(helpModal, document.getElementById('help-modal-header'));
 
             const sortableOptions = {
                 group: 'shared',
                 animation: 150,
                 onEnd: (evt) => {
-                    const movedItemId = evt.item.dataset.id;
-                    const oldIndex = fightActions.findIndex(a => a.id == movedItemId);
+                    // 1. Obter a lista de IDs na nova ordem do DOM para o round atual
+                    const currentRoundActionsMap = new Map(fightActions.filter(a => a.round === currentRound).map(a => [a.id.toString(), a]));
+                    const otherRoundsActions = fightActions.filter(a => a.round !== currentRound);
+                    
+                    const allItemsInRound = [...atleta1List.children, ...atleta2List.children];
+                    const newOrderedRoundActions = allItemsInRound.map(item => currentRoundActionsMap.get(item.dataset.id));
+
+                    // 2. Atualizar o atleta se a ação mudou de lista
+                    const movedActionId = parseInt(evt.item.dataset.id);
+                    const movedAction = newOrderedRoundActions.find(a => a.id === movedActionId);
                     if (evt.to !== evt.from) {
-                        fightActions[oldIndex].athlete = evt.to.id.includes('atleta1') ? 'atleta1' : 'atleta2';
+                        movedAction.athlete = evt.to.id.includes('atleta1') ? 'atleta1' : 'atleta2';
                     }
+
+                    // 3. Recalcular o timestamp da ação movida
+                    const movedActionIndex = newOrderedRoundActions.findIndex(a => a.id === movedActionId);
+                    const prevAction = newOrderedRoundActions[movedActionIndex - 1];
+                    const nextAction = newOrderedRoundActions[movedActionIndex + 1];
+
+                    let newTimeInSeconds;
+                    if (prevAction && nextAction) {
+                        const prevTime = timeToSeconds(prevAction.timestamp);
+                        const nextTime = timeToSeconds(nextAction.timestamp);
+                        newTimeInSeconds = (prevTime + nextTime) / 2;
+                    } else if (prevAction) {
+                        newTimeInSeconds = timeToSeconds(prevAction.timestamp) + 1;
+                    } else if (nextAction) {
+                        const nextTime = timeToSeconds(nextAction.timestamp);
+                        newTimeInSeconds = nextTime > 1 ? nextTime - 1 : nextTime / 2;
+                    } else {
+                        newTimeInSeconds = timeToSeconds(movedAction.timestamp); // Mantém o original se for a única ação
+                    }
+                    movedAction.timestamp = formatTime(newTimeInSeconds);
+
+                    // 4. Reordenar a lista do round atual pelo novo tempo
+                    newOrderedRoundActions.sort((a, b) => timeToSeconds(a.timestamp) - timeToSeconds(b.timestamp));
+
+                    // 5. Juntar com as ações dos outros rounds e atualizar o array principal
+                    fightActions = [...otherRoundsActions, ...newOrderedRoundActions];
+                    fightActions.sort((a,b) => a.round - b.round || timeToSeconds(a.timestamp) - timeToSeconds(b.timestamp));
+
+                    // 6. Renderizar a UI
                     renderActions();
                 }
             };
